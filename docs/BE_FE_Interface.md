@@ -230,13 +230,10 @@ GET /api/v1/factories/{factoryId}/scenarios/{scenarioId}/dashboard/shipping-dela
     "layoutId": "WH_136",
     "scenarioId": "SC_07598",
     "snapshotTime": "2024-01-01T00:00:00",
-    "avgDelayMinutesNext30m": 5.55
-  },
-  {
-    "layoutId": "WH_136",
-    "scenarioId": "SC_07598",
-    "snapshotTime": "2024-01-01T00:15:00",
-    "avgDelayMinutesNext30m": 5.04
+    "avgDelayMinutesNext30m": 5.55,
+    "kpiOtdPct": 86.6,
+    "backorderRatio": 0.0787,
+    "outboundTruckWaitMin": 8.1
   }
 ]
 ```
@@ -247,6 +244,9 @@ GET /api/v1/factories/{factoryId}/scenarios/{scenarioId}/dashboard/shipping-dela
 | scenarioId | String | N | 시나리오 ID |
 | snapshotTime | LocalDateTime | Y | 스냅샷 시각 (15분 간격) — 차트 X축 |
 | avgDelayMinutesNext30m | Double | Y | 향후 30분 예측 출고 지연 (분) — 차트 Y축 |
+| kpiOtdPct | Double | Y | 납기 준수율 (%) |
+| backorderRatio | Double | Y | 미납 주문 비율 |
+| outboundTruckWaitMin | Double | Y | 트럭 대기 시간 (분) |
 
 ---
 
@@ -274,13 +274,10 @@ GET /api/v1/factories/{factoryId}/scenarios/{scenarioId}/dashboard/order-inflow
     "layoutId": "WH_136",
     "scenarioId": "SC_07598",
     "snapshotTime": "2024-01-01T00:00:00",
-    "orderInflow15m": 51.0
-  },
-  {
-    "layoutId": "WH_136",
-    "scenarioId": "SC_07598",
-    "snapshotTime": "2024-01-01T00:15:00",
-    "orderInflow15m": null
+    "orderInflow15m": 51.0,
+    "uniqueSku15m": 96,
+    "urgentOrderRatio": 0.1176,
+    "avgItemsPerOrder": 3.29
   }
 ]
 ```
@@ -291,6 +288,9 @@ GET /api/v1/factories/{factoryId}/scenarios/{scenarioId}/dashboard/order-inflow
 | scenarioId | String | N | 시나리오 ID |
 | snapshotTime | LocalDateTime | Y | 스냅샷 시각 (15분 간격) — 차트 X축 |
 | orderInflow15m | Double | Y | 15분 단위 주문 유입량 — 차트 Y축 |
+| uniqueSku15m | Integer | Y | 고유 SKU 수 (처리 복잡도 지표) |
+| urgentOrderRatio | Double | Y | 긴급 주문 비율 (0.0 ~ 1.0) |
+| avgItemsPerOrder | Double | Y | 주문당 평균 품목 수 |
 
 ---
 
@@ -321,7 +321,11 @@ GET /api/v1/factories/{factoryId}/scenarios/{scenarioId}/dashboard/robot-summary
     "robotActive": 9,
     "robotIdle": 21,
     "robotCharging": 0,
-    "avgIdleDurationMin": 5.15
+    "robotUtilization": 0.3,
+    "avgIdleDurationMin": 5.15,
+    "batteryMean": 70.58,
+    "taskReassign15m": 0.0,
+    "agvTaskSuccessRate": 0.9109
   }
 ]
 ```
@@ -334,7 +338,11 @@ GET /api/v1/factories/{factoryId}/scenarios/{scenarioId}/dashboard/robot-summary
 | robotActive | Integer | Y | 가동 중인 로봇 수 |
 | robotIdle | Integer | Y | 유휴 로봇 수 |
 | robotCharging | Integer | Y | 충전 중인 로봇 수 |
+| robotUtilization | Double | Y | 로봇 가동률 (0.0 ~ 1.0) |
 | avgIdleDurationMin | Double | Y | 평균 유휴 시간 (분) |
+| batteryMean | Double | Y | 평균 배터리 잔량 (%) |
+| taskReassign15m | Double | Y | 15분 내 작업 재배정 횟수 |
+| agvTaskSuccessRate | Double | Y | AGV 작업 성공률 (0.0 ~ 1.0) |
 
 ---
 
@@ -362,7 +370,11 @@ GET /api/v1/factories/{factoryId}/scenarios/{scenarioId}/dashboard/congestion
     "layoutId": "WH_136",
     "scenarioId": "SC_07598",
     "snapshotTime": "2024-01-01T00:00:00",
-    "congestionScore": 0.0
+    "congestionScore": 0.0,
+    "maxZoneDensity": 0.0,
+    "blockedPath15m": 0,
+    "nearCollision15m": 0,
+    "aisleTrafficScore": 24.4
   }
 ]
 ```
@@ -373,6 +385,10 @@ GET /api/v1/factories/{factoryId}/scenarios/{scenarioId}/dashboard/congestion
 | scenarioId | String | N | 시나리오 ID |
 | snapshotTime | LocalDateTime | Y | 스냅샷 시각 (15분 간격) — 차트 X축 |
 | congestionScore | Double | Y | 혼잡도 점수 (0.0 ~ 1.0, 높을수록 혼잡) |
+| maxZoneDensity | Double | Y | 구역 최대 밀도 |
+| blockedPath15m | Integer | Y | 15분 내 경로 차단 횟수 |
+| nearCollision15m | Integer | Y | 15분 내 충돌 위험 횟수 |
+| aisleTrafficScore | Double | Y | 통로 교통량 점수 |
 
 ---
 
