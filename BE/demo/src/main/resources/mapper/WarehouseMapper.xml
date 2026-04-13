@@ -4,49 +4,77 @@
 
 <mapper namespace="com.example.demo.mapper.WarehouseMapper">
 
-    <!-- 1. 공장 목록 -->
-    <select id="getFactories" resultType="com.example.demo.dto.WarehouseDto">
-        SELECT * FROM v_factories
+    <select id="getFactories" resultType="com.example.demo.dto.FactorySummaryResponse">
+        SELECT layout_id,
+               layout_type,
+               floor_area_sqm,
+               robot_total
+        FROM v_factories
+        ORDER BY layout_id ASC
     </select>
 
-    <!-- 2. 공장 기본 정보 -->
-    <select id="getFactoryInfo" resultType="com.example.demo.dto.WarehouseDto">
-        SELECT * FROM v_factory_info
+    <select id="getFactoryInfo" resultType="com.example.demo.dto.FactoryDetailResponse">
+        SELECT layout_id,
+               layout_type,
+               floor_area_sqm,
+               robot_total
+        FROM v_factory_info
         WHERE layout_id = #{layoutId}
     </select>
 
-    <!-- 3. 시나리오 목록 -->
-    <select id="getScenarios" resultType="com.example.demo.dto.WarehouseDto">
-        SELECT * FROM v_scenarios
+    <select id="getScenarios" resultType="com.example.demo.dto.ScenarioResponse">
+        SELECT layout_id,
+               scenario_id
+        FROM v_scenarios
         WHERE layout_id = #{layoutId}
+        ORDER BY scenario_id ASC
     </select>
 
-    <!-- 4. 예측 출고 지연 (타임슬롯 전체) -->
-    <select id="getShippingDelay" resultType="com.example.demo.dto.WarehouseDto">
-        SELECT * FROM v_dashboard_shipping_delay
+    <select id="getShippingDelay" resultType="com.example.demo.dto.ShippingDelayResponse">
+        SELECT layout_id,
+               scenario_id,
+               snapshot_time,
+               avg_delay_minutes_next_30m
+        FROM v_dashboard_shipping_delay
         WHERE layout_id = #{layoutId}
-        AND scenario_id = #{scenarioId}
+          AND scenario_id = #{scenarioId}
+        ORDER BY snapshot_time ASC
     </select>
 
-    <!-- 5. 주문 유입량 (타임슬롯 전체) -->
-    <select id="getOrderInflow" resultType="com.example.demo.dto.WarehouseDto">
-        SELECT * FROM v_dashboard_order_inflow
+    <select id="getOrderInflow" resultType="com.example.demo.dto.OrderInflowResponse">
+        SELECT layout_id,
+               scenario_id,
+               snapshot_time,
+               order_inflow_15m
+        FROM v_dashboard_order_inflow
         WHERE layout_id = #{layoutId}
-        AND scenario_id = #{scenarioId}
+          AND scenario_id = #{scenarioId}
+        ORDER BY snapshot_time ASC
     </select>
 
-    <!-- 6. 로봇 운영 현황 (타임슬롯 전체) -->
-    <select id="getRobotSummary" resultType="com.example.demo.dto.WarehouseDto">
-        SELECT * FROM v_dashboard_robot_summary
+    <select id="getRobotSummary" resultType="com.example.demo.dto.RobotSummaryResponse">
+        SELECT layout_id,
+               scenario_id,
+               snapshot_time,
+               robot_active,
+               robot_idle,
+               robot_charging,
+               avg_idle_duration_min
+        FROM v_dashboard_robot_summary
         WHERE layout_id = #{layoutId}
-        AND scenario_id = #{scenarioId}
+          AND scenario_id = #{scenarioId}
+        ORDER BY snapshot_time ASC
     </select>
 
-    <!-- 7. 혼잡도 (타임슬롯 전체) -->
-    <select id="getCongestion" resultType="com.example.demo.dto.WarehouseDto">
-        SELECT * FROM v_dashboard_congestion
+    <select id="getCongestion" resultType="com.example.demo.dto.CongestionResponse">
+        SELECT layout_id,
+               scenario_id,
+               snapshot_time,
+               congestion_score
+        FROM v_dashboard_congestion
         WHERE layout_id = #{layoutId}
-        AND scenario_id = #{scenarioId}
+          AND scenario_id = #{scenarioId}
+        ORDER BY snapshot_time ASC
     </select>
 
 </mapper>
