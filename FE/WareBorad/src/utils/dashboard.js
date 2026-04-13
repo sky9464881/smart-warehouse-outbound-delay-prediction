@@ -17,12 +17,16 @@ export function formatPercent(value) {
   return `${formatNumber(value, 1)}%`
 }
 
-export function formatTimestamp(value) {
+function resolveLocale(locale = 'en') {
+  return locale === 'ko' ? 'ko-KR' : 'en-US'
+}
+
+export function formatTimestamp(value, locale = 'en') {
   if (!value) {
     return '-'
   }
 
-  return new Intl.DateTimeFormat('ko-KR', {
+  return new Intl.DateTimeFormat(resolveLocale(locale), {
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
@@ -31,56 +35,88 @@ export function formatTimestamp(value) {
   }).format(new Date(value))
 }
 
-export function formatTimeLabel(value) {
+export function formatTimeLabel(value, locale = 'en') {
   if (!value) {
     return '-'
   }
 
-  return new Intl.DateTimeFormat('ko-KR', {
+  return new Intl.DateTimeFormat(resolveLocale(locale), {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
   }).format(new Date(value))
 }
 
-export function getDelayStatus(value) {
+export function getDelayStatus(value, locale = 'en') {
+  const labels = locale === 'ko'
+    ? {
+        noData: '데이터 없음',
+        normal: '정상',
+        watch: '주의',
+        warning: '경고',
+        critical: '위험',
+      }
+    : {
+        noData: 'No data',
+        normal: 'Normal',
+        watch: 'Watch',
+        warning: 'Warning',
+        critical: 'Critical',
+      }
+
   if (value == null) {
-    return { label: 'No data', tone: 'muted' }
+    return { label: labels.noData, tone: 'muted' }
   }
 
   if (value < 10) {
-    return { label: 'Normal', tone: 'good' }
+    return { label: labels.normal, tone: 'good' }
   }
 
   if (value <= 25) {
-    return { label: 'Watch', tone: 'watch' }
+    return { label: labels.watch, tone: 'watch' }
   }
 
   if (value <= 45) {
-    return { label: 'Warning', tone: 'warning' }
+    return { label: labels.warning, tone: 'warning' }
   }
 
-  return { label: 'Critical', tone: 'critical' }
+  return { label: labels.critical, tone: 'critical' }
 }
 
-export function getInflowStatus(value) {
+export function getInflowStatus(value, locale = 'en') {
+  const labels = locale === 'ko'
+    ? {
+        noData: '데이터 없음',
+        low: '낮음',
+        moderate: '보통',
+        high: '높음',
+        veryHigh: '매우 높음',
+      }
+    : {
+        noData: 'No data',
+        low: 'Low',
+        moderate: 'Moderate',
+        high: 'High',
+        veryHigh: 'Very high',
+      }
+
   if (value == null) {
-    return { label: 'No data', tone: 'muted' }
+    return { label: labels.noData, tone: 'muted' }
   }
 
   if (value <= 30) {
-    return { label: 'Low', tone: 'good' }
+    return { label: labels.low, tone: 'good' }
   }
 
   if (value <= 80) {
-    return { label: 'Moderate', tone: 'watch' }
+    return { label: labels.moderate, tone: 'watch' }
   }
 
   if (value <= 140) {
-    return { label: 'High', tone: 'warning' }
+    return { label: labels.high, tone: 'warning' }
   }
 
-  return { label: 'Very high', tone: 'critical' }
+  return { label: labels.veryHigh, tone: 'critical' }
 }
 
 export function getCongestionTone(score, maxScore) {
