@@ -1,13 +1,44 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
+import DashboardLayout from '../views/DashboardLayout.vue'
+import SummaryView from '../views/dashboard/SummaryView.vue'
+import DelayFlowView from '../views/dashboard/DelayFlowView.vue'
+import DemandPressureView from '../views/dashboard/DemandPressureView.vue'
+import CapacityView from '../views/dashboard/CapacityView.vue'
+import FlowFrictionView from '../views/dashboard/FlowFrictionView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/',
-      name: 'home',
-      component: HomeView,
+      component: DashboardLayout,
+      children: [
+        {
+          path: '',
+          name: 'summary',
+          component: SummaryView,
+        },
+        {
+          path: 'delay-flow',
+          name: 'delayFlow',
+          component: DelayFlowView,
+        },
+        {
+          path: 'demand-pressure',
+          name: 'demandPressure',
+          component: DemandPressureView,
+        },
+        {
+          path: 'capacity',
+          name: 'capacity',
+          component: CapacityView,
+        },
+        {
+          path: 'flow-friction',
+          name: 'flowFriction',
+          component: FlowFrictionView,
+        },
+      ],
     },
     {
       path: '/about',
