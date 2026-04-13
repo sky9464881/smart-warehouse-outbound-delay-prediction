@@ -10,4 +10,7 @@ public class OrderInflowDto {
     private String scenarioId;
     private LocalDateTime snapshotTime;
     private Double orderInflow15m;
+    private Integer uniqueSku15m;
+    private Double urgentOrderRatio;
+    private Double avgItemsPerOrder;
 }

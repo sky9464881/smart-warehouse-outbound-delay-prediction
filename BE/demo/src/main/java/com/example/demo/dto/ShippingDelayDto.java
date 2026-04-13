@@ -10,4 +10,7 @@ public class ShippingDelayDto {
     private String scenarioId;
     private LocalDateTime snapshotTime;
     private Double avgDelayMinutesNext30m;
+    private Double kpiOtdPct;
+    private Double backorderRatio;
+    private Double outboundTruckWaitMin;
 }

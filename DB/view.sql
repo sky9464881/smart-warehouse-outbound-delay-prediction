@@ -27,7 +27,10 @@ CREATE OR REPLACE VIEW v_dashboard_shipping_delay AS
 SELECT layout_id,
        scenario_id,
        snapshot_time,
-       avg_delay_minutes_next_30m
+       avg_delay_minutes_next_30m,
+       kpi_otd_pct,
+       backorder_ratio,
+       outbound_truck_wait_min
 FROM warehouse_snapshot;
 
 -- 5. 주문 유입량 (타임슬롯 전체)
@@ -35,7 +38,10 @@ CREATE OR REPLACE VIEW v_dashboard_order_inflow AS
 SELECT layout_id,
        scenario_id,
        snapshot_time,
-       order_inflow_15m
+       order_inflow_15m,
+       unique_sku_15m,
+       urgent_order_ratio,
+       avg_items_per_order
 FROM warehouse_snapshot;
 
 -- 6. 로봇 운영 현황 (타임슬롯 전체)
@@ -46,7 +52,11 @@ SELECT layout_id,
        robot_active,
        robot_idle,
        robot_charging,
-       avg_idle_duration_min
+       robot_utilization,
+       avg_idle_duration_min,
+       battery_mean,
+       task_reassign_15m,
+       agv_task_success_rate
 FROM warehouse_snapshot;
 
 -- 7. 혼잡도 (타임슬롯 전체)
@@ -54,5 +64,9 @@ CREATE OR REPLACE VIEW v_dashboard_congestion AS
 SELECT layout_id,
        scenario_id,
        snapshot_time,
-       congestion_score
+       congestion_score,
+       max_zone_density,
+       blocked_path_15m,
+       near_collision_15m,
+       aisle_traffic_score
 FROM warehouse_snapshot;

@@ -12,5 +12,9 @@ public class RobotSummaryDto {
     private Integer robotActive;
     private Integer robotIdle;
     private Integer robotCharging;
+    private Double robotUtilization;
     private Double avgIdleDurationMin;
+    private Double batteryMean;
+    private Double taskReassign15m;
+    private Double agvTaskSuccessRate;
 }
