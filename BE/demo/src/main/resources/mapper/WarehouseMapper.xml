@@ -5,45 +5,45 @@
 <mapper namespace="com.example.demo.mapper.WarehouseMapper">
 
     <!-- 1. 공장 목록 -->
-    <select id="getFactories" resultType="com.example.demo.dto.WarehouseDto">
+    <select id="getFactories" resultType="com.example.demo.dto.FactoryDto">
         SELECT * FROM v_factories
     </select>
 
     <!-- 2. 공장 기본 정보 -->
-    <select id="getFactoryInfo" resultType="com.example.demo.dto.WarehouseDto">
+    <select id="getFactoryInfo" resultType="com.example.demo.dto.FactoryDto">
         SELECT * FROM v_factory_info
         WHERE layout_id = #{layoutId}
     </select>
 
     <!-- 3. 시나리오 목록 -->
-    <select id="getScenarios" resultType="com.example.demo.dto.WarehouseDto">
+    <select id="getScenarios" resultType="com.example.demo.dto.ScenarioDto">
         SELECT * FROM v_scenarios
         WHERE layout_id = #{layoutId}
     </select>
 
     <!-- 4. 예측 출고 지연 (타임슬롯 전체) -->
-    <select id="getShippingDelay" resultType="com.example.demo.dto.WarehouseDto">
+    <select id="getShippingDelay" resultType="com.example.demo.dto.ShippingDelayDto">
         SELECT * FROM v_dashboard_shipping_delay
         WHERE layout_id = #{layoutId}
         AND scenario_id = #{scenarioId}
     </select>
 
     <!-- 5. 주문 유입량 (타임슬롯 전체) -->
-    <select id="getOrderInflow" resultType="com.example.demo.dto.WarehouseDto">
+    <select id="getOrderInflow" resultType="com.example.demo.dto.OrderInflowDto">
         SELECT * FROM v_dashboard_order_inflow
         WHERE layout_id = #{layoutId}
         AND scenario_id = #{scenarioId}
     </select>
 
     <!-- 6. 로봇 운영 현황 (타임슬롯 전체) -->
-    <select id="getRobotSummary" resultType="com.example.demo.dto.WarehouseDto">
+    <select id="getRobotSummary" resultType="com.example.demo.dto.RobotSummaryDto">
         SELECT * FROM v_dashboard_robot_summary
         WHERE layout_id = #{layoutId}
         AND scenario_id = #{scenarioId}
     </select>
 
     <!-- 7. 혼잡도 (타임슬롯 전체) -->
-    <select id="getCongestion" resultType="com.example.demo.dto.WarehouseDto">
+    <select id="getCongestion" resultType="com.example.demo.dto.CongestionDto">
         SELECT * FROM v_dashboard_congestion
         WHERE layout_id = #{layoutId}
         AND scenario_id = #{scenarioId}

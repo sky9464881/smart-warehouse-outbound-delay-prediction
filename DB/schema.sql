@@ -26,6 +26,7 @@ CREATE TABLE warehouse_snapshot (
     id                          VARCHAR(20)  NOT NULL PRIMARY KEY COMMENT '스냅샷 ID',
     layout_id                   VARCHAR(20)  NOT NULL COMMENT 'FK → warehouse_layout',
     scenario_id                 VARCHAR(20)  COMMENT '시나리오 ID',
+    snapshot_time               DATETIME     COMMENT '스냅샷 시각 (15분 간격)',
     order_inflow_15m            DOUBLE       COMMENT '15분 주문 유입량',
     unique_sku_15m              INT          COMMENT '고유 SKU 수',
     avg_items_per_order         DOUBLE       COMMENT '주문당 평균 품목 수',
@@ -122,3 +123,15 @@ CREATE TABLE warehouse_snapshot (
         REFERENCES warehouse_layout(layout_id)
         ON DELETE RESTRICT
 );
+
+-- snapshot_time 15분 간격으로 채우기
+UPDATE warehouse_snapshot ws
+JOIN (
+    SELECT id,
+           ROW_NUMBER() OVER (
+               PARTITION BY layout_id, scenario_id
+               ORDER BY id
+           ) - 1 AS rn
+    FROM warehouse_snapshot
+) ranked ON ws.id = ranked.id
+SET ws.snapshot_time = DATE_ADD('2024-01-01 00:00:00', INTERVAL ranked.rn * 15 MINUTE);
