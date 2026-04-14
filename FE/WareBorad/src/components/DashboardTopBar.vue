@@ -7,8 +7,11 @@ import InfoHint from '@/components/InfoHint.vue'
 const dashboard = useDashboardStore()
 const route = useRoute()
 
+const isAdminRoute = computed(() => route.name === 'adminPermissions')
+
 const pageTitle = computed(() => {
   const name = route.name
+  if (name === 'adminPermissions') return dashboard.text.nav.permissions
   if (name === 'delayFlow') return dashboard.text.nav.delayFlow
   if (name === 'demandPressure') return dashboard.text.nav.demandPressure
   if (name === 'capacity') return dashboard.text.nav.capacity
@@ -37,7 +40,7 @@ function handleSnapshotChange(event) {
         <strong>{{ pageTitle }}</strong>
       </div>
 
-      <div class="chip-row" aria-label="context chips">
+      <div v-if="!isAdminRoute" class="chip-row" aria-label="context chips">
         <span class="chip">
           <span class="chip-label">{{ dashboard.text.analysisWindow }}</span>
           <strong class="chip-value">{{ dashboard.timeWindowLabel }}</strong>
@@ -50,35 +53,37 @@ function handleSnapshotChange(event) {
     </div>
 
     <div class="topbar-right">
-      <label class="field">
-        <span class="field-label">
-          {{ dashboard.text.factory }}
-          <InfoHint :title="dashboard.helpContent.factorySelector.title" :body="dashboard.helpContent.factorySelector.body" :points="dashboard.helpContent.factorySelector.points" />
-        </span>
-        <select :value="dashboard.selectedFactoryId" :disabled="dashboard.isBooting || dashboard.isFactoryLoading" @change="handleFactoryChange">
-          <option v-for="factory in dashboard.factories" :key="factory.layoutId" :value="factory.layoutId">{{ factory.layoutId }}</option>
-        </select>
-      </label>
+      <template v-if="!isAdminRoute">
+        <label class="field">
+          <span class="field-label">
+            {{ dashboard.text.factory }}
+            <InfoHint :title="dashboard.helpContent.factorySelector.title" :body="dashboard.helpContent.factorySelector.body" :points="dashboard.helpContent.factorySelector.points" />
+          </span>
+          <select :value="dashboard.selectedFactoryId" :disabled="dashboard.isBooting || dashboard.isFactoryLoading" @change="handleFactoryChange">
+            <option v-for="factory in dashboard.factories" :key="factory.layoutId" :value="factory.layoutId">{{ factory.layoutId }}</option>
+          </select>
+        </label>
 
-      <label class="field">
-        <span class="field-label">
-          {{ dashboard.text.scenario }}
-          <InfoHint :title="dashboard.helpContent.scenarioSelector.title" :body="dashboard.helpContent.scenarioSelector.body" :points="dashboard.helpContent.scenarioSelector.points" />
-        </span>
-        <select :value="dashboard.selectedScenarioId" :disabled="dashboard.isBooting || dashboard.isFactoryLoading || !dashboard.scenarios.length" @change="handleScenarioChange">
-          <option v-for="scenario in dashboard.scenarios" :key="scenario.scenarioId" :value="scenario.scenarioId">{{ scenario.scenarioId }}</option>
-        </select>
-      </label>
+        <label class="field">
+          <span class="field-label">
+            {{ dashboard.text.scenario }}
+            <InfoHint :title="dashboard.helpContent.scenarioSelector.title" :body="dashboard.helpContent.scenarioSelector.body" :points="dashboard.helpContent.scenarioSelector.points" />
+          </span>
+          <select :value="dashboard.selectedScenarioId" :disabled="dashboard.isBooting || dashboard.isFactoryLoading || !dashboard.scenarios.length" @change="handleScenarioChange">
+            <option v-for="scenario in dashboard.scenarios" :key="scenario.scenarioId" :value="scenario.scenarioId">{{ scenario.scenarioId }}</option>
+          </select>
+        </label>
 
-      <label class="field">
-        <span class="field-label">
-          {{ dashboard.text.snapshot }}
-          <InfoHint :title="dashboard.helpContent.snapshot.title" :body="dashboard.helpContent.snapshot.body" :points="dashboard.helpContent.snapshot.points" align="right" />
-        </span>
-        <select :value="dashboard.selectedSnapshot" :disabled="dashboard.isDashboardLoading || !dashboard.snapshotOptions.length" @change="handleSnapshotChange">
-          <option v-for="snapshot in dashboard.snapshotOptions" :key="snapshot" :value="snapshot">{{ dashboard.formatTimestamp(snapshot, dashboard.locale) }}</option>
-        </select>
-      </label>
+        <label class="field">
+          <span class="field-label">
+            {{ dashboard.text.snapshot }}
+            <InfoHint :title="dashboard.helpContent.snapshot.title" :body="dashboard.helpContent.snapshot.body" :points="dashboard.helpContent.snapshot.points" align="right" />
+          </span>
+          <select :value="dashboard.selectedSnapshot" :disabled="dashboard.isDashboardLoading || !dashboard.snapshotOptions.length" @change="handleSnapshotChange">
+            <option v-for="snapshot in dashboard.snapshotOptions" :key="snapshot" :value="snapshot">{{ dashboard.formatTimestamp(snapshot, dashboard.locale) }}</option>
+          </select>
+        </label>
+      </template>
 
       <div class="locale-toggle" role="group" :aria-label="dashboard.text.toggleLabel">
         <button type="button" class="locale-button" :class="{ 'is-active': dashboard.locale === 'en' }" @click="dashboard.locale = 'en'">
@@ -238,4 +243,3 @@ function handleSnapshotChange(event) {
   }
 }
 </style>
-

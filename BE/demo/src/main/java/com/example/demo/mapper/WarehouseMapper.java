@@ -2,6 +2,7 @@ package com.example.demo.mapper;
 
 import com.example.demo.dto.CongestionResponse;
 import com.example.demo.dto.FactoryDetailResponse;
+import com.example.demo.dto.FactoryOverviewResponse;
 import com.example.demo.dto.FactorySummaryResponse;
 import com.example.demo.dto.OrderInflowResponse;
 import com.example.demo.dto.RobotSummaryResponse;
@@ -14,6 +15,10 @@ import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface WarehouseMapper {
     List<FactorySummaryResponse> getFactories();
+
+    List<FactorySummaryResponse> getFactoriesByIds(@Param("layoutIds") List<String> layoutIds);
+
+    List<FactoryOverviewResponse> getFactoriesOverview(@Param("layoutIds") List<String> layoutIds);
 
     FactoryDetailResponse getFactoryInfo(@Param("layoutId") String layoutId);
 

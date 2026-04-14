@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.demo.mapper.UserMapper">
+
+    <select id="existsGlobalAdmin" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1
+            FROM app_user
+            WHERE role = 'GLOBAL_ADMIN'
+        )
+    </select>
+
+    <select id="findUserByEmail" resultType="com.example.demo.dto.UserEntity">
+        SELECT id,
+               email,
+               display_name,
+               password_hash,
+               role,
+               created_at,
+               updated_at
+        FROM app_user
+        WHERE email = #{email}
+    </select>
+
+    <select id="findUserById" resultType="com.example.demo.dto.UserEntity">
+        SELECT id,
+               email,
+               display_name,
+               password_hash,
+               role,
+               created_at,
+               updated_at
+        FROM app_user
+        WHERE id = #{id}
+    </select>
+
+    <insert id="insertUser" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO app_user (email, display_name, password_hash, role)
+        VALUES (#{email}, #{displayName}, #{passwordHash}, #{role})
+    </insert>
+
+    <select id="findToken" resultType="com.example.demo.dto.AuthTokenEntity">
+        SELECT token,
+               user_id,
+               expires_at
+        FROM auth_token
+        WHERE token = #{token}
+    </select>
+
+    <insert id="insertToken">
+        INSERT INTO auth_token (token, user_id, expires_at)
+        VALUES (#{token}, #{userId}, #{expiresAt})
+    </insert>
+
+    <delete id="deleteToken">
+        DELETE
+        FROM auth_token
+        WHERE token = #{token}
+    </delete>
+
+    <delete id="deleteExpiredTokens">
+        DELETE
+        FROM auth_token
+        WHERE expires_at &lt; #{now}
+    </delete>
+
+    <select id="listUserFactoryIds" resultType="string">
+        SELECT layout_id
+        FROM user_factory_access
+        WHERE user_id = #{userId}
+        ORDER BY layout_id ASC
+    </select>
+
+    <select id="hasFactoryAccess" resultType="boolean">
+        SELECT EXISTS(
+            SELECT 1
+            FROM user_factory_access
+            WHERE user_id = #{userId}
+              AND layout_id = #{layoutId}
+        )
+    </select>
+
+    <delete id="deleteUserFactoryAccess">
+        DELETE
+        FROM user_factory_access
+        WHERE user_id = #{userId}
+    </delete>
+
+    <insert id="insertUserFactoryAccessBulk">
+        INSERT INTO user_factory_access (user_id, layout_id)
+        VALUES
+        <foreach collection="layoutIds" item="layoutId" separator=",">
+            (#{userId}, #{layoutId})
+        </foreach>
+    </insert>
+
+    <select id="listUsers" resultType="com.example.demo.dto.UserEntity">
+        SELECT id,
+               email,
+               display_name,
+               role,
+               created_at,
+               updated_at
+        FROM app_user
+        ORDER BY id ASC
+    </select>
+
+</mapper>

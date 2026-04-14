@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.dto.CongestionResponse;
 import com.example.demo.dto.FactoryDetailResponse;
+import com.example.demo.dto.FactoryOverviewResponse;
 import com.example.demo.dto.FactorySummaryResponse;
 import com.example.demo.dto.OrderInflowResponse;
 import com.example.demo.dto.RobotSummaryResponse;
@@ -25,6 +26,11 @@ public class WarehouseController {
     @GetMapping("/factories")
     public List<FactorySummaryResponse> getFactories() {
         return warehouseService.getFactories();
+    }
+
+    @GetMapping("/factories/overview")
+    public List<FactoryOverviewResponse> getFactoriesOverview() {
+        return warehouseService.getFactoriesOverview();
     }
 
     @GetMapping("/factories/{factoryId}")

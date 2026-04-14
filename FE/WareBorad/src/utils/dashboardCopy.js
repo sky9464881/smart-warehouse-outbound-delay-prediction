@@ -8,6 +8,7 @@ export const dashboardCopy = {
       demandPressure: 'Demand pressure',
       capacity: 'Capacity',
       flowFriction: 'Flow friction',
+      permissions: 'Access control',
     },
     toggleLabel: 'Language',
     english: 'EN',
@@ -91,6 +92,7 @@ export const dashboardCopy = {
       demandPressure: '수요 압력',
       capacity: '가동 여력',
       flowFriction: '흐름 마찰도',
+      permissions: '권한 설정',
     },
     toggleLabel: '언어',
     english: 'EN',
@@ -166,4 +168,3 @@ export const dashboardCopy = {
     },
   },
 }
-

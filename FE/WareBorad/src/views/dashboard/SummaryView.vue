@@ -1,11 +1,14 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useDashboardStore } from '@/stores/dashboard'
+import { useAuthStore } from '@/stores/auth'
+import { getFactoriesOverview } from '@/api/dashboard'
 import DonutChart from '@/components/DonutChart.vue'
 import InfoHint from '@/components/InfoHint.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 
 const dashboard = useDashboardStore()
+const auth = useAuthStore()
 
 const toneColors = {
   good: '#0f766e',
@@ -28,6 +31,115 @@ function buildToneSegments(tones) {
       color: toneColors[entry.key] ?? toneColors.muted,
     }))
 }
+
+const overviewFactories = ref([])
+const isOverviewLoading = ref(false)
+const overviewErrorMessage = ref('')
+
+const distScope = ref(auth.isGlobalAdmin ? 'all' : 'selected')
+
+async function loadFactoriesOverview() {
+  if (isOverviewLoading.value) return
+
+  isOverviewLoading.value = true
+  overviewErrorMessage.value = ''
+  try {
+    overviewFactories.value = await getFactoriesOverview()
+  } catch (error) {
+    overviewFactories.value = []
+    overviewErrorMessage.value = error.message || (dashboard.locale === 'ko' ? '전체 공장 요약을 불러오지 못했습니다.' : 'Failed to load factory overview.')
+  } finally {
+    isOverviewLoading.value = false
+  }
+}
+
+onMounted(() => {
+  if (auth.isGlobalAdmin) {
+    loadFactoriesOverview()
+  }
+})
+
+const overviewFactoryCount = computed(() => overviewFactories.value.length)
+
+const overviewMaxCongestionScore = computed(() => {
+  const values = overviewFactories.value.map((entry) => Number(entry.congestionScore)).filter((value) => Number.isFinite(value))
+  return values.length ? Math.max(...values) : 0
+})
+
+const overviewDelayDistribution = computed(() => {
+  const counts = { good: 0, watch: 0, warning: 0, critical: 0, muted: 0 }
+  for (const row of overviewFactories.value) {
+    const status = dashboard.getDelayStatus(row.avgDelayMinutesNext30m, dashboard.locale)
+    counts[status.tone] = (counts[status.tone] ?? 0) + 1
+  }
+
+  return buildToneSegments([
+    { key: 'good', label: 'Good', value: counts.good },
+    { key: 'watch', label: 'Watch', value: counts.watch },
+    { key: 'warning', label: 'Warning', value: counts.warning },
+    { key: 'critical', label: 'Critical', value: counts.critical },
+    { key: 'muted', label: 'No data', value: counts.muted },
+  ])
+})
+
+const overviewInflowDistribution = computed(() => {
+  const counts = { good: 0, watch: 0, warning: 0, critical: 0, muted: 0 }
+  for (const row of overviewFactories.value) {
+    const status = dashboard.getInflowStatus(row.orderInflow15m, dashboard.locale)
+    counts[status.tone] = (counts[status.tone] ?? 0) + 1
+  }
+
+  return buildToneSegments([
+    { key: 'good', label: 'Good', value: counts.good },
+    { key: 'watch', label: 'Watch', value: counts.watch },
+    { key: 'warning', label: 'Warning', value: counts.warning },
+    { key: 'critical', label: 'Critical', value: counts.critical },
+    { key: 'muted', label: 'No data', value: counts.muted },
+  ])
+})
+
+const overviewCongestionDistribution = computed(() => {
+  const counts = { good: 0, watch: 0, warning: 0, critical: 0, muted: 0 }
+  for (const row of overviewFactories.value) {
+    const tone = dashboard.getCongestionTone(row.congestionScore, overviewMaxCongestionScore.value)
+    counts[tone] = (counts[tone] ?? 0) + 1
+  }
+
+  return buildToneSegments([
+    { key: 'good', label: 'Good', value: counts.good },
+    { key: 'watch', label: 'Watch', value: counts.watch },
+    { key: 'warning', label: 'Warning', value: counts.warning },
+    { key: 'critical', label: 'Critical', value: counts.critical },
+    { key: 'muted', label: 'No data', value: counts.muted },
+  ])
+})
+
+const isAllFactoryScope = computed(() => auth.isGlobalAdmin && distScope.value === 'all')
+
+const distDelaySegments = computed(() => (isAllFactoryScope.value ? overviewDelayDistribution.value : delayDistribution.value))
+const distInflowSegments = computed(() => (isAllFactoryScope.value ? overviewInflowDistribution.value : inflowDistribution.value))
+const distCongestionSegments = computed(() => (isAllFactoryScope.value ? overviewCongestionDistribution.value : congestionDistribution.value))
+
+const distributionScopeLabel = computed(() => {
+  if (isAllFactoryScope.value) {
+    return dashboard.locale === 'ko'
+      ? `전체 공장 (${overviewFactoryCount.value}개)`
+      : `All factories (${overviewFactoryCount.value})`
+  }
+  return dashboard.timeWindowLabel
+})
+
+const distributionNote = computed(() => {
+  if (isAllFactoryScope.value) {
+    return dashboard.locale === 'ko'
+      ? '각 공장의 최신 스냅샷 기준으로 상태 톤(정상/주의/경고/위험) 분포를 집계합니다.'
+      : 'Counts status tones (good/watch/warning/critical) using the latest snapshot per factory.'
+  }
+
+  return dashboard.locale === 'ko'
+    ? '분포는 선택 스냅샷까지의 상태 톤(좋음/주의/경고/위험)을 집계한 결과입니다.'
+    : 'Distributions count status tones (good/watch/warning/critical) up to the selected snapshot.'
+})
 
 const delayDistribution = computed(() => {
   const counts = { good: 0, watch: 0, warning: 0, critical: 0, muted: 0 }
@@ -179,6 +291,15 @@ function toneClass(tone) {
       <p>{{ dashboard.text.preparingDashboard }}</p>
     </section>
 
+    <section v-else-if="!dashboard.factories.length" class="message-card">
+      <strong>{{ dashboard.locale === 'ko' ? '접근 가능한 공장이 없습니다.' : 'No factories assigned.' }}</strong>
+      <p>
+        {{ dashboard.locale === 'ko'
+          ? '전체 관리자에게 공장 접근 권한을 요청하세요.'
+          : 'Ask a global admin to grant factory access.' }}
+      </p>
+    </section>
+
     <template v-else>
       <section class="grid context-grid">
         <article class="card context-card">
@@ -291,35 +412,45 @@ function toneClass(tone) {
         <article class="card dist-card">
           <div class="card-top">
             <p class="card-kicker">{{ dashboard.text.distribution }}</p>
+            <div v-if="auth.isGlobalAdmin" class="dist-toggle" role="group" aria-label="distribution scope">
+              <button type="button" class="dist-button" :class="{ 'is-active': distScope === 'all' }" @click="distScope = 'all'">
+                {{ dashboard.locale === 'ko' ? '전체 공장' : 'All' }}
+              </button>
+              <button type="button" class="dist-button" :class="{ 'is-active': distScope === 'selected' }" @click="distScope = 'selected'">
+                {{ dashboard.locale === 'ko' ? '선택 공장' : 'Selected' }}
+              </button>
+            </div>
           </div>
+          <p v-if="isAllFactoryScope && isOverviewLoading" class="dist-state">{{ dashboard.text.loading }}</p>
+          <p v-else-if="isAllFactoryScope && overviewErrorMessage" class="dist-state is-error">{{ overviewErrorMessage }}</p>
           <div class="dist-grid">
             <div class="dist-item">
-              <DonutChart :segments="delayDistribution" :size="9.8" :hole="5.2">
+              <DonutChart :segments="distDelaySegments" :size="9.8" :hole="5.2">
                 <div class="donut-center">
                   <strong>{{ dashboard.text.shippingDelay }}</strong>
-                  <span>{{ dashboard.timeWindowLabel }}</span>
+                  <span>{{ distributionScopeLabel }}</span>
                 </div>
               </DonutChart>
             </div>
             <div class="dist-item">
-              <DonutChart :segments="inflowDistribution" :size="9.8" :hole="5.2">
+              <DonutChart :segments="distInflowSegments" :size="9.8" :hole="5.2">
                 <div class="donut-center">
                   <strong>{{ dashboard.text.demandPressure }}</strong>
-                  <span>{{ dashboard.timeWindowLabel }}</span>
+                  <span>{{ distributionScopeLabel }}</span>
                 </div>
               </DonutChart>
             </div>
             <div class="dist-item">
-              <DonutChart :segments="congestionDistribution" :size="9.8" :hole="5.2">
+              <DonutChart :segments="distCongestionSegments" :size="9.8" :hole="5.2">
                 <div class="donut-center">
                   <strong>{{ dashboard.text.flowFriction }}</strong>
-                  <span>{{ dashboard.timeWindowLabel }}</span>
+                  <span>{{ distributionScopeLabel }}</span>
                 </div>
               </DonutChart>
             </div>
           </div>
           <p class="dist-note">
-            {{ dashboard.locale === 'ko' ? '분포는 선택 스냅샷까지의 상태 톤(좋음/주의/경고/위험)을 집계한 결과입니다.' : 'Distributions count status tones (good/watch/warning/critical) up to the selected snapshot.' }}
+            {{ distributionNote }}
           </p>
         </article>
 
@@ -617,6 +748,42 @@ function toneClass(tone) {
   align-items: center;
 }
 
+.dist-toggle {
+  display: inline-flex;
+  padding: 0.22rem;
+  border-radius: 999px;
+  background: rgba(248, 250, 252, 0.92);
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+}
+
+.dist-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  color: #64748b;
+  font-weight: 900;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+}
+
+.dist-button.is-active {
+  background: #111827;
+  color: #fff;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.18);
+}
+
+.dist-state {
+  margin-top: 0.35rem;
+  color: #64748b;
+  font-weight: 800;
+  font-size: 0.92rem;
+}
+
+.dist-state.is-error {
+  color: #b91c1c;
+}
+
 .donut-center strong {
   display: block;
   font-weight: 900;
@@ -805,4 +972,3 @@ tbody tr:hover td {
   }
 }
 </style>
-

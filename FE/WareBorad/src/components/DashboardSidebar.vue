@@ -1,10 +1,13 @@
 <script setup>
 import { computed } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useDashboardStore } from '@/stores/dashboard'
+import { useAuthStore } from '@/stores/auth'
 
 const dashboard = useDashboardStore()
+const auth = useAuthStore()
 const route = useRoute()
+const router = useRouter()
 
 const items = computed(() => ([
   { name: 'summary', label: dashboard.text.nav.summary, icon: 'grid' },
@@ -12,12 +15,18 @@ const items = computed(() => ([
   { name: 'demandPressure', label: dashboard.text.nav.demandPressure, icon: 'spark' },
   { name: 'capacity', label: dashboard.text.nav.capacity, icon: 'bot' },
   { name: 'flowFriction', label: dashboard.text.nav.flowFriction, icon: 'traffic' },
+  ...(auth.isGlobalAdmin ? [{ name: 'adminPermissions', label: dashboard.text.nav.permissions, icon: 'shield' }] : []),
 ]))
 
 function isActive(name) {
   if (route.name === name) return true
   if (name === 'summary' && route.matched.some((record) => record.name === 'summary')) return true
   return false
+}
+
+async function handleLogout() {
+  await auth.logout()
+  await router.push({ name: 'login' })
 }
 </script>
 
@@ -56,10 +65,22 @@ function isActive(name) {
             <path d="M7.6 9.2h.1M12.3 9.2h.1" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
             <path d="M7.5 12.8h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
           </svg>
-          <svg v-else viewBox="0 0 20 20" fill="none">
+          <svg v-else-if="item.icon === 'traffic'" viewBox="0 0 20 20" fill="none">
             <path d="M3 11.5c0-4.4 3-8 7-8s7 3.6 7 8v2.2c0 1.5-1.2 2.8-2.8 2.8H5.8C4.2 16.5 3 15.2 3 13.7v-2.2Z" stroke="currentColor" stroke-width="1.6" />
             <path d="M6.2 12.3h7.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
             <path d="M5.9 9.2c1.2-1.3 2.7-2 4.1-2 1.5 0 3 .7 4.1 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          </svg>
+          <svg v-else-if="item.icon === 'shield'" viewBox="0 0 20 20" fill="none">
+            <path
+              d="M10 2.3 16 5v5.5c0 4-2.6 6.6-6 7.9-3.4-1.3-6-3.9-6-7.9V5l6-2.7Z"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linejoin="round"
+            />
+            <path d="M7.2 9.9 9 11.7l3.8-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <svg v-else viewBox="0 0 20 20" fill="none">
+            <path d="M10 17a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z" stroke="currentColor" stroke-width="1.6" />
           </svg>
         </span>
         <span class="nav-label">{{ item.label }}</span>
@@ -67,6 +88,18 @@ function isActive(name) {
     </nav>
 
     <div class="sidebar-foot">
+      <div class="account">
+        <div class="account-main">
+          <strong class="account-name">{{ auth.displayName || auth.email }}</strong>
+          <span class="account-meta">
+            {{ auth.email }}
+            <span class="role-pill">{{ auth.isGlobalAdmin ? 'GLOBAL ADMIN' : 'FACTORY ADMIN' }}</span>
+          </span>
+        </div>
+        <button type="button" class="logout" @click="handleLogout">
+          {{ dashboard.locale === 'ko' ? '로그아웃' : 'Logout' }}
+        </button>
+      </div>
       <p v-if="dashboard.selectedFactoryId" class="foot-line">
         <span>{{ dashboard.text.factory }}</span>
         <strong>{{ dashboard.selectedFactoryId }}</strong>
@@ -188,6 +221,61 @@ function isActive(name) {
   gap: 0.4rem;
 }
 
+.account {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.55rem 0.6rem 0.75rem;
+  border-radius: 1.15rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.account-main {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.account-name {
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 900;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+}
+
+.account-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  color: rgba(255, 255, 255, 0.72);
+  font-weight: 800;
+  font-size: 0.8rem;
+}
+
+.role-pill {
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  font-size: 0.66rem;
+}
+
+.logout {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.55rem 0.75rem;
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.logout:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
 .foot-line {
   display: flex;
   justify-content: space-between;
@@ -209,4 +297,3 @@ function isActive(name) {
   }
 }
 </style>
-

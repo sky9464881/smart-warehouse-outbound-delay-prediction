@@ -1,18 +1,13 @@
+import { requestJson } from '@/api/http'
+
 const API_BASE = '/api/v1/factories'
-
-async function requestJson(url) {
-  const response = await fetch(url)
-  const payload = await response.json().catch(() => null)
-
-  if (!response.ok) {
-    throw new Error(payload?.message || 'Failed to load dashboard data.')
-  }
-
-  return payload
-}
 
 export function getFactories() {
   return requestJson(API_BASE)
+}
+
+export function getFactoriesOverview() {
+  return requestJson(`${API_BASE}/overview`)
 }
 
 export function getFactoryInfo(factoryId) {
