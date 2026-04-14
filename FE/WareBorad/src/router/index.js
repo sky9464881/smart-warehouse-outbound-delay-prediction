@@ -3,6 +3,7 @@ import pinia from '@/stores/pinia'
 import { useAuthStore } from '@/stores/auth'
 import DashboardLayout from '../views/DashboardLayout.vue'
 import SummaryView from '../views/dashboard/SummaryView.vue'
+import DistributionSummaryView from '../views/dashboard/DistributionSummaryView.vue'
 import DelayFlowView from '../views/dashboard/DelayFlowView.vue'
 import DemandPressureView from '../views/dashboard/DemandPressureView.vue'
 import CapacityView from '../views/dashboard/CapacityView.vue'
@@ -35,6 +36,11 @@ const router = createRouter({
           path: '',
           name: 'summary',
           component: SummaryView,
+        },
+        {
+          path: 'distribution-summary',
+          name: 'distributionSummary',
+          component: DistributionSummaryView,
         },
         {
           path: 'delay-flow',

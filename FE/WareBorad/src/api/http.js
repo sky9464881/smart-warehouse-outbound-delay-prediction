@@ -1,4 +1,25 @@
 const TOKEN_KEY = 'wb_token'
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/$/, '')
+
+function resolveUrl(url) {
+  if (!API_BASE_URL) {
+    return url
+  }
+
+  if (typeof url !== 'string') {
+    return url
+  }
+
+  if (/^https?:\/\//i.test(url)) {
+    return url
+  }
+
+  if (url.startsWith('/')) {
+    return `${API_BASE_URL}${url}`
+  }
+
+  return `${API_BASE_URL}/${url}`
+}
 
 export function getAuthToken() {
   return localStorage.getItem(TOKEN_KEY) || ''
@@ -19,8 +40,27 @@ export async function requestJson(url, options = {}) {
     headers.set('Authorization', `Bearer ${token}`)
   }
 
-  const response = await fetch(url, { ...options, headers })
+  let response
+  try {
+    response = await fetch(resolveUrl(url), { ...options, headers })
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw error
+    }
+    throw new Error('Cannot reach server. Check backend/proxy settings.')
+  }
+
+  const responseClone = response.clone()
   const payload = await response.json().catch(() => null)
+
+  let message = payload?.message
+  if (!message) {
+    const text = await responseClone.text().catch(() => '')
+    const trimmed = text.trim()
+    if (trimmed) {
+      message = trimmed.length > 200 ? `${trimmed.slice(0, 200)}...` : trimmed
+    }
+  }
 
   if (response.status === 401) {
     setAuthToken('')
@@ -28,7 +68,7 @@ export async function requestJson(url, options = {}) {
   }
 
   if (!response.ok) {
-    throw new Error(payload?.message || 'Request failed.')
+    throw new Error(message || `Request failed (${response.status}).`)
   }
 
   return payload
@@ -49,4 +89,3 @@ export function putJson(url, body) {
     body: body != null ? JSON.stringify(body) : undefined,
   })
 }
-

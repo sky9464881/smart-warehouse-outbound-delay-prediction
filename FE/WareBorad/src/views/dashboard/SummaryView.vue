@@ -3,34 +3,11 @@ import { computed, onMounted, ref } from 'vue'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useAuthStore } from '@/stores/auth'
 import { getFactoriesOverview } from '@/api/dashboard'
-import DonutChart from '@/components/DonutChart.vue'
 import InfoHint from '@/components/InfoHint.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 
 const dashboard = useDashboardStore()
 const auth = useAuthStore()
-
-const toneColors = {
-  good: '#0f766e',
-  watch: '#f59e0b',
-  warning: '#fb923c',
-  critical: '#ef4444',
-  muted: '#94a3b8',
-}
-
-function buildToneSegments(tones) {
-  const total = tones.reduce((sum, entry) => sum + entry.value, 0)
-  if (!total) return []
-
-  return tones
-    .filter((entry) => entry.value > 0)
-    .map((entry) => ({
-      ...entry,
-      share: Math.round((entry.value / total) * 100),
-      angle: (entry.value / total) * 360,
-      color: toneColors[entry.key] ?? toneColors.muted,
-    }))
-}
 
 const overviewFactories = ref([])
 const isOverviewLoading = ref(false)
@@ -57,136 +34,6 @@ onMounted(() => {
   if (auth.isGlobalAdmin) {
     loadFactoriesOverview()
   }
-})
-
-const overviewFactoryCount = computed(() => overviewFactories.value.length)
-
-const overviewMaxCongestionScore = computed(() => {
-  const values = overviewFactories.value.map((entry) => Number(entry.congestionScore)).filter((value) => Number.isFinite(value))
-  return values.length ? Math.max(...values) : 0
-})
-
-const overviewDelayDistribution = computed(() => {
-  const counts = { good: 0, watch: 0, warning: 0, critical: 0, muted: 0 }
-  for (const row of overviewFactories.value) {
-    const status = dashboard.getDelayStatus(row.avgDelayMinutesNext30m, dashboard.locale)
-    counts[status.tone] = (counts[status.tone] ?? 0) + 1
-  }
-
-  return buildToneSegments([
-    { key: 'good', label: 'Good', value: counts.good },
-    { key: 'watch', label: 'Watch', value: counts.watch },
-    { key: 'warning', label: 'Warning', value: counts.warning },
-    { key: 'critical', label: 'Critical', value: counts.critical },
-    { key: 'muted', label: 'No data', value: counts.muted },
-  ])
-})
-
-const overviewInflowDistribution = computed(() => {
-  const counts = { good: 0, watch: 0, warning: 0, critical: 0, muted: 0 }
-  for (const row of overviewFactories.value) {
-    const status = dashboard.getInflowStatus(row.orderInflow15m, dashboard.locale)
-    counts[status.tone] = (counts[status.tone] ?? 0) + 1
-  }
-
-  return buildToneSegments([
-    { key: 'good', label: 'Good', value: counts.good },
-    { key: 'watch', label: 'Watch', value: counts.watch },
-    { key: 'warning', label: 'Warning', value: counts.warning },
-    { key: 'critical', label: 'Critical', value: counts.critical },
-    { key: 'muted', label: 'No data', value: counts.muted },
-  ])
-})
-
-const overviewCongestionDistribution = computed(() => {
-  const counts = { good: 0, watch: 0, warning: 0, critical: 0, muted: 0 }
-  for (const row of overviewFactories.value) {
-    const tone = dashboard.getCongestionTone(row.congestionScore, overviewMaxCongestionScore.value)
-    counts[tone] = (counts[tone] ?? 0) + 1
-  }
-
-  return buildToneSegments([
-    { key: 'good', label: 'Good', value: counts.good },
-    { key: 'watch', label: 'Watch', value: counts.watch },
-    { key: 'warning', label: 'Warning', value: counts.warning },
-    { key: 'critical', label: 'Critical', value: counts.critical },
-    { key: 'muted', label: 'No data', value: counts.muted },
-  ])
-})
-
-const isAllFactoryScope = computed(() => auth.isGlobalAdmin && distScope.value === 'all')
-
-const distDelaySegments = computed(() => (isAllFactoryScope.value ? overviewDelayDistribution.value : delayDistribution.value))
-const distInflowSegments = computed(() => (isAllFactoryScope.value ? overviewInflowDistribution.value : inflowDistribution.value))
-const distCongestionSegments = computed(() => (isAllFactoryScope.value ? overviewCongestionDistribution.value : congestionDistribution.value))
-
-const distributionScopeLabel = computed(() => {
-  if (isAllFactoryScope.value) {
-    return dashboard.locale === 'ko'
-      ? `전체 공장 (${overviewFactoryCount.value}개)`
-      : `All factories (${overviewFactoryCount.value})`
-  }
-  return dashboard.timeWindowLabel
-})
-
-const distributionNote = computed(() => {
-  if (isAllFactoryScope.value) {
-    return dashboard.locale === 'ko'
-      ? '각 공장의 최신 스냅샷 기준으로 상태 톤(정상/주의/경고/위험) 분포를 집계합니다.'
-      : 'Counts status tones (good/watch/warning/critical) using the latest snapshot per factory.'
-  }
-
-  return dashboard.locale === 'ko'
-    ? '분포는 선택 스냅샷까지의 상태 톤(좋음/주의/경고/위험)을 집계한 결과입니다.'
-    : 'Distributions count status tones (good/watch/warning/critical) up to the selected snapshot.'
-})
-
-const delayDistribution = computed(() => {
-  const counts = { good: 0, watch: 0, warning: 0, critical: 0, muted: 0 }
-  for (const row of dashboard.visibleShippingDelay) {
-    const status = dashboard.getDelayStatus(row.avgDelayMinutesNext30m, dashboard.locale)
-    counts[status.tone] = (counts[status.tone] ?? 0) + 1
-  }
-
-  return buildToneSegments([
-    { key: 'good', label: 'Good', value: counts.good },
-    { key: 'watch', label: 'Watch', value: counts.watch },
-    { key: 'warning', label: 'Warning', value: counts.warning },
-    { key: 'critical', label: 'Critical', value: counts.critical },
-    { key: 'muted', label: 'No data', value: counts.muted },
-  ])
-})
-
-const inflowDistribution = computed(() => {
-  const counts = { good: 0, watch: 0, warning: 0, critical: 0, muted: 0 }
-  for (const row of dashboard.visibleOrderInflow) {
-    const status = dashboard.getInflowStatus(row.orderInflow15m, dashboard.locale)
-    counts[status.tone] = (counts[status.tone] ?? 0) + 1
-  }
-
-  return buildToneSegments([
-    { key: 'good', label: 'Good', value: counts.good },
-    { key: 'watch', label: 'Watch', value: counts.watch },
-    { key: 'warning', label: 'Warning', value: counts.warning },
-    { key: 'critical', label: 'Critical', value: counts.critical },
-    { key: 'muted', label: 'No data', value: counts.muted },
-  ])
-})
-
-const congestionDistribution = computed(() => {
-  const counts = { good: 0, watch: 0, warning: 0, critical: 0, muted: 0 }
-  for (const row of dashboard.visibleCongestion) {
-    const tone = dashboard.getCongestionTone(row.congestionScore, dashboard.maxCongestionScore)
-    counts[tone] = (counts[tone] ?? 0) + 1
-  }
-
-  return buildToneSegments([
-    { key: 'good', label: 'Good', value: counts.good },
-    { key: 'watch', label: 'Watch', value: counts.watch },
-    { key: 'warning', label: 'Warning', value: counts.warning },
-    { key: 'critical', label: 'Critical', value: counts.critical },
-    { key: 'muted', label: 'No data', value: counts.muted },
-  ])
 })
 
 const alertFeed = computed(() => {
@@ -409,51 +256,6 @@ function toneClass(tone) {
       </section>
 
       <section class="grid lower-grid">
-        <article class="card dist-card">
-          <div class="card-top">
-            <p class="card-kicker">{{ dashboard.text.distribution }}</p>
-            <div v-if="auth.isGlobalAdmin" class="dist-toggle" role="group" aria-label="distribution scope">
-              <button type="button" class="dist-button" :class="{ 'is-active': distScope === 'all' }" @click="distScope = 'all'">
-                {{ dashboard.locale === 'ko' ? '전체 공장' : 'All' }}
-              </button>
-              <button type="button" class="dist-button" :class="{ 'is-active': distScope === 'selected' }" @click="distScope = 'selected'">
-                {{ dashboard.locale === 'ko' ? '선택 공장' : 'Selected' }}
-              </button>
-            </div>
-          </div>
-          <p v-if="isAllFactoryScope && isOverviewLoading" class="dist-state">{{ dashboard.text.loading }}</p>
-          <p v-else-if="isAllFactoryScope && overviewErrorMessage" class="dist-state is-error">{{ overviewErrorMessage }}</p>
-          <div class="dist-grid">
-            <div class="dist-item">
-              <DonutChart :segments="distDelaySegments" :size="9.8" :hole="5.2">
-                <div class="donut-center">
-                  <strong>{{ dashboard.text.shippingDelay }}</strong>
-                  <span>{{ distributionScopeLabel }}</span>
-                </div>
-              </DonutChart>
-            </div>
-            <div class="dist-item">
-              <DonutChart :segments="distInflowSegments" :size="9.8" :hole="5.2">
-                <div class="donut-center">
-                  <strong>{{ dashboard.text.demandPressure }}</strong>
-                  <span>{{ distributionScopeLabel }}</span>
-                </div>
-              </DonutChart>
-            </div>
-            <div class="dist-item">
-              <DonutChart :segments="distCongestionSegments" :size="9.8" :hole="5.2">
-                <div class="donut-center">
-                  <strong>{{ dashboard.text.flowFriction }}</strong>
-                  <span>{{ distributionScopeLabel }}</span>
-                </div>
-              </DonutChart>
-            </div>
-          </div>
-          <p class="dist-note">
-            {{ distributionNote }}
-          </p>
-        </article>
-
         <article class="card alert-card">
           <div class="card-top">
             <p class="card-kicker">{{ dashboard.text.alertFeed }}</p>

@@ -11,6 +11,7 @@ const router = useRouter()
 
 const items = computed(() => ([
   { name: 'summary', label: dashboard.text.nav.summary, icon: 'grid' },
+  { name: 'distributionSummary', label: dashboard.locale === 'ko' ? '전체 분포 요약' : 'Distribution Summary', icon: 'chart' },
   { name: 'delayFlow', label: dashboard.text.nav.delayFlow, icon: 'wave' },
   { name: 'demandPressure', label: dashboard.text.nav.demandPressure, icon: 'spark' },
   { name: 'capacity', label: dashboard.text.nav.capacity, icon: 'bot' },
@@ -80,8 +81,12 @@ async function handleLogout() {
             />
             <path d="M7.2 9.9 9 11.7l3.8-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
-          <svg v-else viewBox="0 0 20 20" fill="none">
-            <path d="M10 17a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z" stroke="currentColor" stroke-width="1.6" />
+          <svg v-else-if="item.icon === 'chart'" viewBox="0 0 20 20" fill="none">
+            <path d="M3 3v14h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M7 9l3-3 4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+            <circle cx="7" cy="9" r="1" fill="currentColor" />
+            <circle cx="10" cy="6" r="1" fill="currentColor" />
+            <circle cx="14" cy="10" r="1" fill="currentColor" />
           </svg>
         </span>
         <span class="nav-label">{{ item.label }}</span>

@@ -6,8 +6,8 @@ export function getFactories() {
   return requestJson(API_BASE)
 }
 
-export function getFactoriesOverview() {
-  return requestJson(`${API_BASE}/overview`)
+export function getFactoriesOverview(options = {}) {
+  return requestJson(`${API_BASE}/overview`, options)
 }
 
 export function getFactoryInfo(factoryId) {
