@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useAuthStore } from '@/stores/auth'
 import { getFactoriesOverview } from '@/api/dashboard'
@@ -76,14 +76,6 @@ const overviewSoftTimeoutId = ref(null)
 const overviewHardTimeoutId = ref(null)
 let overviewRequest = 0
 
-const distScope = ref(auth.isGlobalAdmin ? 'all' : 'selected')
-const scopeTouched = ref(false)
-
-function setDistScope(scope) {
-  scopeTouched.value = true
-  distScope.value = scope
-}
-
 function clearOverviewProgressTimer() {
   if (overviewProgressTimer.value) {
     window.clearInterval(overviewProgressTimer.value)
@@ -117,7 +109,6 @@ function cancelFactoriesOverview() {
 }
 
 async function loadFactoriesOverview(options = {}) {
-  if (!auth.isGlobalAdmin) return
   if (isOverviewLoading.value) return
 
   const { force = false } = options
@@ -165,18 +156,18 @@ async function loadFactoriesOverview(options = {}) {
 
     if (!overviewFactories.value.length) {
       overviewErrorMessage.value = dashboard.locale === 'ko'
-        ? '전체 공장의 최신 스냅샷을 찾을 수 없습니다.'
-        : 'No latest snapshots found for all factories.'
+        ? '접근 가능한 공장의 최신 스냅샷을 찾을 수 없습니다.'
+        : 'No latest snapshots found for accessible factories.'
     }
   } catch (error) {
     if (requestId !== overviewRequest) return
 
     if (error?.name === 'AbortError') {
       overviewErrorMessage.value = dashboard.locale === 'ko'
-        ? '전체 공장 데이터를 불러오는 데 시간이 너무 오래 걸렸습니다. 잠시 후 다시 시도해주세요.'
-        : 'Loading all factories data took too long. Please retry.'
+        ? '공장 분포 데이터를 불러오는 데 시간이 너무 오래 걸렸습니다. 잠시 후 다시 시도해주세요.'
+        : 'Loading factory distribution data took too long. Please retry.'
     } else {
-      overviewErrorMessage.value = error?.message || (dashboard.locale === 'ko' ? '전체 공장 요약을 불러오지 못했습니다.' : 'Failed to load factory overview.')
+      overviewErrorMessage.value = error?.message || (dashboard.locale === 'ko' ? '공장 분포 요약을 불러오지 못했습니다.' : 'Failed to load factory overview.')
     }
   } finally {
     if (requestId !== overviewRequest) return
@@ -193,42 +184,18 @@ onUnmounted(() => {
   cancelFactoriesOverview()
 })
 
-watch(
-  () => auth.isGlobalAdmin,
-  (isAdmin) => {
-    if (!isAdmin) {
-      distScope.value = 'selected'
-      scopeTouched.value = false
-      cancelFactoriesOverview()
-      return
-    }
+onMounted(() => {
+  loadFactoriesOverview()
+})
 
-    if (!scopeTouched.value && distScope.value !== 'all') {
-      distScope.value = 'all'
-    }
+const accessScopeLabel = computed(() => {
+  const isKo = dashboard.locale === 'ko'
+  if (auth.isGlobalAdmin) {
+    return isKo ? '전 공장' : 'All factories'
+  }
+  return isKo ? '권한 공장' : 'Accessible factories'
+})
 
-    if (distScope.value === 'all') {
-      loadFactoriesOverview()
-    }
-  },
-  { immediate: true },
-)
-
-watch(
-  () => distScope.value,
-  (scope) => {
-    if (scope === 'all') {
-      if (auth.isGlobalAdmin) {
-        loadFactoriesOverview()
-      }
-      return
-    }
-
-    cancelFactoriesOverview()
-  },
-)
-
-const isAllFactoryScope = computed(() => auth.isGlobalAdmin && distScope.value === 'all')
 const overviewFactoryCount = computed(() => overviewFactories.value.length)
 
 const overviewMaxCongestionScore = computed(() => {
@@ -288,69 +255,39 @@ const overviewCongestionReport = computed(() =>
   ),
 )
 
-const selectedDelayReport = computed(() =>
-  buildToneReportFromRows(
-    dashboard.visibleShippingDelay,
-    (row) => dashboard.getDelayStatus(row.avgDelayMinutesNext30m, dashboard.locale).tone,
-    toneLabels.value.delay,
-  ),
-)
-
-const selectedInflowReport = computed(() =>
-  buildToneReportFromRows(
-    dashboard.visibleOrderInflow,
-    (row) => dashboard.getInflowStatus(row.orderInflow15m, dashboard.locale).tone,
-    toneLabels.value.inflow,
-  ),
-)
-
-const selectedCongestionReport = computed(() =>
-  buildToneReportFromRows(
-    dashboard.visibleCongestion,
-    (row) => dashboard.getCongestionTone(row.congestionScore, dashboard.maxCongestionScore),
-    toneLabels.value.congestion,
-  ),
-)
-
-const distDelayReport = computed(() => (isAllFactoryScope.value ? overviewDelayReport.value : selectedDelayReport.value))
-const distInflowReport = computed(() => (isAllFactoryScope.value ? overviewInflowReport.value : selectedInflowReport.value))
-const distCongestionReport = computed(() => (isAllFactoryScope.value ? overviewCongestionReport.value : selectedCongestionReport.value))
+const distDelayReport = overviewDelayReport
+const distInflowReport = overviewInflowReport
+const distCongestionReport = overviewCongestionReport
 
 const distDelaySegments = computed(() => distDelayReport.value.segments)
 const distInflowSegments = computed(() => distInflowReport.value.segments)
 const distCongestionSegments = computed(() => distCongestionReport.value.segments)
 
 const distributionScopeLabel = computed(() => {
-  if (isAllFactoryScope.value) {
-    return dashboard.locale === 'ko'
-      ? `전체 공장 (${overviewFactoryCount.value}개)`
-      : `All factories (${overviewFactoryCount.value})`
-  }
-  return dashboard.timeWindowLabel
+  const count = overviewFactoryCount.value
+  const label = accessScopeLabel.value
+  return dashboard.locale === 'ko' ? `${label} (${count}개)` : `${label} (${count})`
 })
 
 const distributionNote = computed(() => {
-  if (isAllFactoryScope.value) {
-    return dashboard.locale === 'ko'
-      ? '각 공장의 최신 스냅샷 기준으로 상태 톤(정상/주의/경고/위험) 분포를 집계합니다.'
-      : 'Counts status tones (normal/watch/warning/critical) using the latest snapshot per factory.'
+  if (dashboard.locale === 'ko') {
+    return `이 탭은 상단 공장 선택과 무관하게, ${accessScopeLabel.value}의 각 최신 스냅샷 1개로 상태 톤(정상/주의/경고/위험) 분포를 집계합니다.`
   }
-
-  return dashboard.locale === 'ko'
-    ? '분포는 선택 스냅샷까지의 상태 톤(좋음/주의/경고/위험)을 집계한 결과입니다.'
-    : 'Distributions count status tones (good/watch/warning/critical) up to the selected snapshot.'
+  return 'Aggregates tone distributions using the latest snapshot per factory in your access scope (independent from the factory selector).'
 })
 
 const distributionHintPoints = computed(() => {
   const isKo = dashboard.locale === 'ko'
   if (isKo) {
     return [
+      '이 탭은 상단 공장 선택과 무관하게 권한 공장을 집계합니다.',
       '도넛은 각 톤의 비중(%)을 보여줍니다.',
       '경고/위험 비중이 높을수록 운영 리스크가 큽니다.',
       '데이터 없음이 많다면 수집/집계 파이프라인을 점검하세요.',
     ]
   }
   return [
+    'This tab aggregates all accessible factories (independent from the factory selector).',
     'Donuts show the share (%) of each tone.',
     'Higher warning/critical share usually means higher operational risk.',
     'A large “No data” slice may indicate ingestion or aggregation gaps.',
@@ -454,28 +391,21 @@ const overviewLatestSnapshotTime = computed(() => {
 const highlightMetaItems = computed(() => {
   const isKo = dashboard.locale === 'ko'
 
-  if (isAllFactoryScope.value) {
-    return [
-      { label: isKo ? '공장 수' : 'Factories', value: overviewFactoryCount.value || '-' },
-      { label: isKo ? '최신 스냅샷' : 'Latest snapshot', value: overviewLatestSnapshotTime.value ? dashboard.formatTimestamp(overviewLatestSnapshotTime.value, dashboard.locale) : '-' },
-      { label: isKo ? '업데이트' : 'Updated', value: overviewLoadedAt.value ? dashboard.formatTimestamp(overviewLoadedAt.value, dashboard.locale) : '-' },
-    ]
-  }
-
   return [
-    { label: isKo ? '공장' : 'Factory', value: dashboard.selectedFactoryId || '-' },
-    { label: isKo ? '분석 구간' : 'Window', value: dashboard.timeWindowLabel },
-    { label: isKo ? '스냅샷' : 'Snapshots', value: dashboard.selectedSnapshotNumber },
+    { label: isKo ? '범위' : 'Scope', value: accessScopeLabel.value },
+    { label: isKo ? '공장 수' : 'Factories', value: overviewFactoryCount.value || '-' },
+    { label: isKo ? '최신 스냅샷' : 'Latest snapshot', value: overviewLatestSnapshotTime.value ? dashboard.formatTimestamp(overviewLatestSnapshotTime.value, dashboard.locale) : '-' },
+    { label: isKo ? '업데이트' : 'Updated', value: overviewLoadedAt.value ? dashboard.formatTimestamp(overviewLoadedAt.value, dashboard.locale) : '-' },
   ]
 })
 
-const distAverageDelay = computed(() => (isAllFactoryScope.value ? averageFinite(overviewFactories.value, (row) => row.avgDelayMinutesNext30m) : dashboard.averageDelaySoFar))
-const distPeakInflow = computed(() => (isAllFactoryScope.value ? maxFinite(overviewFactories.value, (row) => row.orderInflow15m)?.value ?? null : dashboard.peakInflowSoFar))
-const distAverageCongestion = computed(() => (isAllFactoryScope.value ? averageFinite(overviewFactories.value, (row) => row.congestionScore) : dashboard.averageCongestionSoFar))
+const distAverageDelay = computed(() => averageFinite(overviewFactories.value, (row) => row.avgDelayMinutesNext30m))
+const distPeakInflow = computed(() => maxFinite(overviewFactories.value, (row) => row.orderInflow15m)?.value ?? null)
+const distAverageCongestion = computed(() => averageFinite(overviewFactories.value, (row) => row.congestionScore))
 
-const distMaxDelay = computed(() => (isAllFactoryScope.value ? maxFinite(overviewFactories.value, (row) => row.avgDelayMinutesNext30m) : maxFinite(dashboard.visibleShippingDelay, (row) => row.avgDelayMinutesNext30m)))
-const distMaxInflow = computed(() => (isAllFactoryScope.value ? maxFinite(overviewFactories.value, (row) => row.orderInflow15m) : maxFinite(dashboard.visibleOrderInflow, (row) => row.orderInflow15m)))
-const distMaxCongestion = computed(() => (isAllFactoryScope.value ? maxFinite(overviewFactories.value, (row) => row.congestionScore) : maxFinite(dashboard.visibleCongestion, (row) => row.congestionScore)))
+const distMaxDelay = computed(() => maxFinite(overviewFactories.value, (row) => row.avgDelayMinutesNext30m))
+const distMaxInflow = computed(() => maxFinite(overviewFactories.value, (row) => row.orderInflow15m))
+const distMaxCongestion = computed(() => maxFinite(overviewFactories.value, (row) => row.congestionScore))
 
 const delayAlertSummary = computed(() => buildAlertSummary(distDelayReport.value))
 const inflowAlertSummary = computed(() => buildAlertSummary(distInflowReport.value))
@@ -483,10 +413,9 @@ const congestionAlertSummary = computed(() => buildAlertSummary(distCongestionRe
 
 function formatMaxContext(point) {
   if (!point?.row) return '-'
-  if (isAllFactoryScope.value) {
-    return point.row.layoutId ? `${point.row.layoutId}` : '-'
-  }
-  return dashboard.formatTimestamp(point.row.snapshotTime, dashboard.locale)
+  const id = point.row.layoutId ? `${point.row.layoutId}` : '-'
+  const time = point.row.snapshotTime ? dashboard.formatTimestamp(point.row.snapshotTime, dashboard.locale) : ''
+  return time ? `${id} · ${time}` : id
 }
 
 const insightItems = computed(() => {
@@ -563,8 +492,8 @@ const overviewRiskFactories = computed(() => {
       <h1>{{ dashboard.locale === 'ko' ? '전체 분포 요약' : 'Distribution Summary' }}</h1>
       <p class="hero-subtitle">
         {{ dashboard.locale === 'ko'
-          ? '전체 공장 또는 선택 공장의 상태 분포를 확인하세요.'
-          : 'Check status distributions across all factories or selected factories.' }}
+          ? '내가 권한을 가진 공장들의 상태 분포를 확인하세요.'
+          : 'Check status distributions across factories you have access to.' }}
       </p>
     </header>
 
@@ -573,14 +502,7 @@ const overviewRiskFactories = computed(() => {
         <div class="card-top">
           <p class="card-kicker">{{ dashboard.text.distribution }}</p>
           <div class="card-actions">
-            <div v-if="auth.isGlobalAdmin" class="dist-toggle" role="group" aria-label="distribution scope">
-              <button type="button" class="dist-button" :class="{ 'is-active': distScope === 'all' }" @click="setDistScope('all')">
-                {{ dashboard.locale === 'ko' ? '전체 공장' : 'All' }}
-              </button>
-              <button type="button" class="dist-button" :class="{ 'is-active': distScope === 'selected' }" @click="setDistScope('selected')">
-                {{ dashboard.locale === 'ko' ? '선택 공장' : 'Selected' }}
-              </button>
-            </div>
+            <span class="scope-chip">{{ accessScopeLabel }}</span>
             <InfoHint
               :title="dashboard.locale === 'ko' ? '분포 해석' : 'How to read'"
               :body="distributionNote"
@@ -590,11 +512,11 @@ const overviewRiskFactories = computed(() => {
           </div>
         </div>
 
-        <div v-if="isAllFactoryScope && isOverviewLoading && !overviewFactories.length" class="dist-loading-block">
+        <div v-if="isOverviewLoading && !overviewFactories.length" class="dist-loading-block">
           <p>
             {{ overviewSlow
               ? (dashboard.locale === 'ko' ? '서버 응답이 지연되고 있어요. 잠시만 기다려주세요…' : 'Server response is slow — hang tight…')
-              : (dashboard.locale === 'ko' ? '전체 공장 분포를 불러오는 중입니다...' : 'Loading all factories distribution...') }}
+              : (dashboard.locale === 'ko' ? '공장 분포를 불러오는 중입니다...' : 'Loading factory distribution...') }}
           </p>
           <div class="dist-progress">
             <span>{{ overviewProgress }}%</span>
@@ -602,7 +524,7 @@ const overviewRiskFactories = computed(() => {
           </div>
         </div>
 
-        <div v-else-if="isAllFactoryScope && overviewErrorMessage && !overviewFactories.length" class="dist-state is-error">
+        <div v-else-if="overviewErrorMessage && !overviewFactories.length" class="dist-state is-error">
           <p>{{ overviewErrorMessage }}</p>
           <button type="button" class="retry-button" @click="loadFactoriesOverview({ force: true })">
             {{ dashboard.locale === 'ko' ? '다시 시도' : 'Retry' }}
@@ -610,7 +532,7 @@ const overviewRiskFactories = computed(() => {
         </div>
 
         <template v-else>
-          <div v-if="isAllFactoryScope && overviewErrorMessage" class="dist-state is-error">
+          <div v-if="overviewErrorMessage" class="dist-state is-error">
             <p>{{ overviewErrorMessage }}</p>
           </div>
 
@@ -689,7 +611,7 @@ const overviewRiskFactories = computed(() => {
           <p class="card-kicker">{{ dashboard.locale === 'ko' ? '핵심 요약' : 'Highlights' }}</p>
         </div>
 
-        <div v-if="isAllFactoryScope && isOverviewLoading && !overviewFactories.length" class="dist-loading-block">
+        <div v-if="isOverviewLoading && !overviewFactories.length" class="dist-loading-block">
           <p>
             {{ overviewSlow
               ? (dashboard.locale === 'ko' ? '요약 정보를 불러오는 중(지연됨)…' : 'Loading highlights (slow)…')
@@ -701,7 +623,7 @@ const overviewRiskFactories = computed(() => {
           </div>
         </div>
 
-        <div v-else-if="isAllFactoryScope && overviewErrorMessage && !overviewFactories.length" class="dist-state is-error">
+        <div v-else-if="overviewErrorMessage && !overviewFactories.length" class="dist-state is-error">
           <p>{{ overviewErrorMessage }}</p>
           <button type="button" class="retry-button" @click="loadFactoriesOverview({ force: true })">
             {{ dashboard.locale === 'ko' ? '다시 시도' : 'Retry' }}
@@ -728,11 +650,15 @@ const overviewRiskFactories = computed(() => {
             </li>
           </ul>
 
-          <div v-if="isAllFactoryScope && overviewRiskFactories.length" class="risk-shell">
+          <div v-if="overviewRiskFactories.length" class="risk-shell">
             <p class="risk-kicker">{{ dashboard.locale === 'ko' ? '위험 공장 TOP' : 'Top risk factories' }}</p>
             <ul class="risk-list">
-              <li v-for="factory in overviewRiskFactories" :key="factory.layoutId" class="risk-item">
-                <strong>{{ factory.layoutId }}</strong>
+              <li v-for="(factory, index) in overviewRiskFactories" :key="factory.layoutId" class="risk-item">
+                <div class="risk-left">
+                  <span class="risk-rank">{{ index + 1 }}</span>
+                  <strong>{{ factory.layoutId }}</strong>
+                  <span class="risk-score">{{ factory.score }}/9</span>
+                </div>
                 <div class="risk-dots" aria-label="risk tones">
                   <span class="risk-dot" :class="toneClass(factory.delayTone)" :title="dashboard.text.shippingDelay" aria-hidden="true"></span>
                   <span class="risk-dot" :class="toneClass(factory.inflowTone)" :title="dashboard.text.demandPressure" aria-hidden="true"></span>
@@ -843,29 +769,18 @@ const overviewRiskFactories = computed(() => {
   padding: 0.15rem 0;
 }
 
-.dist-toggle {
+.scope-chip {
   display: inline-flex;
-  padding: 0.22rem;
+  align-items: center;
+  padding: 0.45rem 0.75rem;
   border-radius: 999px;
   background: rgba(248, 250, 252, 0.92);
   box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
-}
-
-.dist-button {
-  border: 0;
-  border-radius: 999px;
-  padding: 0.5rem 0.75rem;
-  background: transparent;
-  color: #64748b;
+  color: #0f172a;
   font-weight: 900;
-  cursor: pointer;
+  font-size: 0.82rem;
   letter-spacing: 0.02em;
-}
-
-.dist-button.is-active {
-  background: #111827;
-  color: #fff;
-  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.18);
+  white-space: nowrap;
 }
 
 .dist-loading-block {
@@ -1025,7 +940,7 @@ const overviewRiskFactories = computed(() => {
 
 .meta-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
 }
 
@@ -1172,9 +1087,37 @@ const overviewRiskFactories = computed(() => {
   border: 1px solid rgba(15, 23, 42, 0.08);
 }
 
+.risk-left {
+  display: inline-flex;
+  gap: 0.55rem;
+  align-items: center;
+  min-width: 0;
+}
+
+.risk-rank {
+  width: 1.35rem;
+  height: 1.35rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.18);
+  color: #475569;
+  font-weight: 900;
+  font-size: 0.78rem;
+  flex-shrink: 0;
+}
+
 .risk-item strong {
   font-weight: 900;
   color: #0f172a;
+}
+
+.risk-score {
+  color: #64748b;
+  font-weight: 900;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
 }
 
 .risk-dots {

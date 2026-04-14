@@ -25,11 +25,20 @@ See [Vite Configuration Reference](https://vite.dev/config/).
 npm install
 ```
 
+## Backend / API
+
+This frontend calls the Spring backend under `/api` (default target: `http://localhost:8080`).
+
+- Dev/preview uses Vite proxy: set `VITE_API_PROXY_TARGET` in `.env` (see `.env.example`).
+- Direct calls (no proxy): set `VITE_API_BASE_URL` in `.env`.
+
 ### Compile and Hot-Reload for Development
 
 ```sh
 npm run dev
 ```
+
+If PowerShell blocks `npm` (ExecutionPolicy), use `npm.cmd run dev` instead.
 
 ### Compile and Minify for Production
 
