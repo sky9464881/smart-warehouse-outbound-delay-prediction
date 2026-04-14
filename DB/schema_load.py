@@ -6,8 +6,16 @@ from sqlalchemy import create_engine
 BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / "data"
 TIMESTAMP_START = pd.Timestamp("2024-01-01 00:00:00")
-
-engine = create_engine("mysql+pymysql://root:root@localhost:3306/warehouse_db")
+AIVEN_CA_PATH = Path("C:/Users/kosm/.ssh/ca.pem")
+engine = create_engine(
+    f"mysql+pymysql://avnadmin: {DB_PASSWORD}@warehouse-dashboard-db-warehouse-dashboard.e.aivencloud.com:15637/warehouse_db"
+,
+    connect_args={
+        "ssl": {
+            "ca": str(AIVEN_CA_PATH)
+        }
+    }
+)
 
 
 def attach_snapshot_time(snapshot: pd.DataFrame) -> pd.DataFrame:
